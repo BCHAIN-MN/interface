@@ -8,10 +8,12 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Wallet, LogOut, User, Shield, ChevronDown } from 'lucide-react'
-import { VerificationDialog } from '@/components/verification-dialog'
-import { Badge } from '@/components/ui/badge'
+} from "@/components/ui/dropdown-menu"
+import { Wallet, LogOut, User, Shield, ChevronDown } from "lucide-react"
+import { VerificationDialog } from "@/components/verification-dialog"
+import { Badge } from "@/components/ui/badge"
+import { isWalletVerified, clearVerification } from "@/lib/verification-stub"
+import { checkVerificationStatus } from "@/lib/contracts"
 
 interface WalletConnectProps {
   onWalletChange?: (wallet: string | null, isVerified: boolean) => void
@@ -21,6 +23,33 @@ export function WalletConnect({ onWalletChange }: WalletConnectProps = {}) {
   const [wallet, setWallet] = useState<string | null>(null)
   const [isVerified, setIsVerified] = useState(false)
   const [reputation, setReputation] = useState(0)
+
+  useEffect(() => {
+    async function checkVerification() {
+      if (!wallet) return
+
+      console.log(" Checking verification status...")
+
+      const stubVerified = isWalletVerified(wallet)
+
+      if (stubVerified) {
+        console.log(" Wallet verified (stub)")
+        setIsVerified(true)
+        onWalletChange?.(wallet, true)
+        return
+      }
+
+      const chainVerified = await checkVerificationStatus(wallet)
+
+      if (chainVerified) {
+        console.log(" Wallet verified (on-chain)")
+        setIsVerified(true)
+        onWalletChange?.(wallet, true)
+      }
+    }
+
+    checkVerification()
+  }, [wallet, onWalletChange])
 
   const connectWallet = async () => {
     if (typeof window.ethereum === 'undefined') {

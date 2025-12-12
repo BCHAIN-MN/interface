@@ -22,10 +22,26 @@ export function Hero() {
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Button size="lg" className="gap-2 font-semibold">
+          <Button 
+            size="lg" 
+            className="gap-2 font-semibold"
+            onClick={() => {
+              const moduleSection = document.getElementById('modules-section')
+              if (moduleSection) {
+                moduleSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            }}
+          >
             Browse Modules <ArrowRight className="w-4 h-4" />
           </Button>
-          <Button size="lg" variant="outline" className="gap-2 font-semibold">
+          <Button 
+            size="lg" 
+            variant="outline" 
+            className="gap-2 font-semibold"
+            onClick={() => {
+              alert('To get verified, please contact the contract owner at: marcel.christen@stud.hslu.ch\n\nVerification is currently done manually by the admin.')
+            }}
+          >
             <Shield className="w-4 h-4" /> Get Verified
           </Button>
         </div>
@@ -37,7 +53,7 @@ export function Hero() {
             </div>
             <h3 className="font-bold text-lg mb-2">Verified Students</h3>
             <p className="text-sm text-muted-foreground text-pretty">
-              Only HSLU students with @hslu.ch emails can review. Soul-bound NFT badges ensure authenticity.
+              Only HSLU students with @stud.hslu.ch emails can review. Soul-bound NFT badges ensure authenticity.
             </p>
           </div>
 

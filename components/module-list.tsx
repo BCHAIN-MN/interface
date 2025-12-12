@@ -1,100 +1,69 @@
-'use client'
+"use client"
+
+import { useState, useEffect } from "react"
+import { ModuleCard } from "@/components/module-card"
+import { Input } from "@/components/ui/input"
+import { Search, Filter } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { fetchModulesFromChain } from "@/lib/contracts"
 
 interface ModuleListProps {
   isVerified?: boolean
 }
 
-// Mock data - in production, this would come from blockchain/backend
-const mockModules = [
-  {
-    id: 1,
-    name: 'Penetration Testing & Ethical Hacking',
-    department: 'Information and Cybersecurity',
-    semester: 3,
-    averageRating: 4.5,
-    totalReviews: 23,
-    workload: 'High',
-    difficulty: 'Medium',
-    description: 'Learn advanced penetration testing techniques and ethical hacking methodologies.',
-  },
-  {
-    id: 2,
-    name: 'Web Application Security',
-    department: 'Information and Cybersecurity',
-    semester: 2,
-    averageRating: 4.2,
-    totalReviews: 45,
-    workload: 'Medium',
-    difficulty: 'Medium',
-    description: 'Comprehensive course on web vulnerabilities, OWASP Top 10, and secure coding practices.',
-  },
-  {
-    id: 3,
-    name: 'Cryptography Fundamentals',
-    department: 'Computer Science',
-    semester: 4,
-    averageRating: 4.8,
-    totalReviews: 31,
-    workload: 'High',
-    difficulty: 'High',
-    description: 'Deep dive into cryptographic algorithms, protocols, and their practical applications.',
-  },
-  {
-    id: 4,
-    name: 'Introduction to Web Development',
-    department: 'Computer Science',
-    semester: 1,
-    averageRating: 4.0,
-    totalReviews: 67,
-    workload: 'Low',
-    difficulty: 'Low',
-    description: 'Learn HTML, CSS, JavaScript, and modern web development frameworks.',
-  },
-  {
-    id: 5,
-    name: 'Network Security & Architecture',
-    department: 'Information and Cybersecurity',
-    semester: 3,
-    averageRating: 4.3,
-    totalReviews: 28,
-    workload: 'Medium',
-    difficulty: 'Medium',
-    description: 'Understanding network protocols, security architectures, and defense strategies.',
-  },
-  {
-    id: 6,
-    name: 'Malware Analysis & Reverse Engineering',
-    department: 'Information and Cybersecurity',
-    semester: 4,
-    averageRating: 4.7,
-    totalReviews: 19,
-    workload: 'High',
-    difficulty: 'High',
-    description: 'Advanced malware analysis techniques, reverse engineering, and incident response.',
-  },
-]
+export function ModuleList({ isVerified = false }: ModuleListProps) {
+  const [searchQuery, setSearchQuery] = useState("")
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all")
+  const [modules, setModules] = useState<Array<{
+    id: number | string
+    name: string
+    department?: string
+    semester?: number
+    averageRating?: number
+    totalReviews?: number
+    workload?: string
+    difficulty?: string
+    description?: string
+  }>>([])
+  const [loading, setLoading] = useState(true)
 
-export function ModuleList() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [departmentFilter, setDepartmentFilter] = useState<string>('all')
+  useEffect(() => {
+    async function loadModules() {
+      setLoading(true)
+      const chainModules = await fetchModulesFromChain()
+      setModules(chainModules || [])
+      setLoading(false)
+    }
 
-  const filteredModules = mockModules.filter((module) => {
-    const matchesSearch = module.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    loadModules()
+  }, [])
+
+  const filteredModules = modules.filter((module) => {
+    const matchesSearch =
+      module.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       module.description.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesDepartment = departmentFilter === 'all' || module.department === departmentFilter
+    const matchesDepartment = departmentFilter === "all" || module.department === departmentFilter
     return matchesSearch && matchesDepartment
   })
 
-  const departments = Array.from(new Set(mockModules.map(m => m.department)))
+  const departments = Array.from(new Set(modules.map((m) => m.department)))
+
+  if (loading) {
+    return (
+      <section className="container mx-auto px-4 py-16">
+        <div className="max-w-6xl mx-auto text-center">
+          <p className="text-muted-foreground">Loading modules...</p>
+        </div>
+      </section>
+    )
+  }
 
   return (
-    <section className="container mx-auto px-4 py-16">
+    <section id="modules-section" className="container mx-auto px-4 py-16">
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="space-y-4">
           <h2 className="text-3xl font-bold">Browse Modules</h2>
-          <p className="text-muted-foreground">
-            Discover courses reviewed by your fellow HSLU students
-          </p>
+          <p className="text-muted-foreground">Discover courses reviewed by your fellow HSLU students</p>
 
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">

@@ -1,7 +1,6 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Star, Shield } from 'lucide-react'
@@ -96,37 +95,34 @@ export function ReviewsList({ moduleId, refreshTrigger }: ReviewsListProps) {
                   </AvatarFallback>
                 </Avatar>
 
-              <div className="flex-1 space-y-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-sm font-medium">
-                        {review.reviewer}
-                      </span>
-                      {review.isVerified && (
-                        <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary border-primary/20">
-                          <Shield className="w-3 h-3" />
-                          Verified Student
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className="text-xs">
-                        Reputation: {review.reputation}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 fill-chart-4 text-chart-4" />
-                        {review.rating}/5
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-sm font-medium">
+                          {shortAddress}
+                        </span>
+                        {isVerified && (
+                          <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary border-primary/20">
+                            <Shield className="w-3 h-3" />
+                            Verified Student
+                          </Badge>
+                        )}
                       </div>
-                      <span>•</span>
-                      <span>Workload: {review.workload}/5</span>
-                      <span>•</span>
-                      <span>Difficulty: {review.difficulty}/5</span>
-                      <span>•</span>
-                      <span>{review.timestamp}</span>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 fill-chart-4 text-chart-4" />
+                          {review.rating}/5
+                        </div>
+                        <span>•</span>
+                        <span>Workload: {review.workload}/5</span>
+                        <span>•</span>
+                        <span>Difficulty: {review.difficulty}/5</span>
+                        <span>•</span>
+                        <span>{formatDate(review.timestamp)}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
                   <p className="text-sm leading-relaxed text-pretty">
                     {review.comment}

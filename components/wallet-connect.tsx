@@ -1,7 +1,7 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,21 +52,21 @@ export function WalletConnect({ onWalletChange }: WalletConnectProps = {}) {
   }, [wallet, onWalletChange])
 
   const connectWallet = async () => {
-    if (typeof window.ethereum === 'undefined') {
-      alert('Please install MetaMask to use this feature')
+    if (typeof window.ethereum === "undefined") {
+      alert("Please install MetaMask to use this feature")
       return
     }
 
     try {
       // @ts-ignore
-      const accounts = await window.ethereum.request({ 
-        method: 'eth_requestAccounts' 
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts",
       })
       setWallet(accounts[0])
       setReputation(42)
       onWalletChange?.(accounts[0], isVerified)
     } catch (error) {
-      console.error('Failed to connect wallet:', error)
+      console.error("Failed to connect wallet:", error)
     }
   }
 
@@ -74,6 +74,9 @@ export function WalletConnect({ onWalletChange }: WalletConnectProps = {}) {
     setWallet(null)
     setIsVerified(false)
     setReputation(0)
+    if (wallet) {
+      clearVerification(wallet)
+    }
     onWalletChange?.(null, false)
   }
 
@@ -94,7 +97,7 @@ export function WalletConnect({ onWalletChange }: WalletConnectProps = {}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="lg" className="gap-2">
+        <Button variant="outline" size="lg" className="gap-2 bg-transparent">
           <Wallet className="w-4 h-4" />
           <span className="font-mono">
             {wallet.slice(0, 6)}...{wallet.slice(-4)}
@@ -131,10 +134,7 @@ export function WalletConnect({ onWalletChange }: WalletConnectProps = {}) {
         {!isVerified && (
           <>
             <DropdownMenuItem asChild>
-              <VerificationDialog 
-                wallet={wallet} 
-                onVerified={handleVerified}
-              />
+              <VerificationDialog wallet={wallet} onVerified={handleVerified} />
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>

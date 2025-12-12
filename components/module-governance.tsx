@@ -6,8 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Vote, Plus, Trash2, Clock, CheckCircle2, XCircle, ThumbsUp, ThumbsDown, AlertCircle } from 'lucide-react'
-import { ProposeModuleDialog } from '@/components/propose-module-dialog'
-import { RemoveModuleDialog } from '@/components/remove-module-dialog'
+import { AddModuleDialog } from '@/components/add-module-dialog'
 
 // Mock proposal data
 const mockProposals = [
@@ -137,15 +136,13 @@ export function ModuleGovernance({ isVerified, wallet }: ModuleGovernanceProps) 
               <h2 className="text-3xl font-bold">Module Governance</h2>
             </div>
             <p className="text-muted-foreground max-w-2xl">
-              Verified HSLU students can propose adding new modules or removing outdated ones. 
-              Each proposal requires {mockProposals[0]?.requiredVotes || 50} votes to pass.
+              Governance features coming soon. Currently, verified students can add modules directly using the button above.
             </p>
           </div>
           
           {isVerified && wallet && (
             <div className="flex gap-3">
-              <ProposeModuleDialog />
-              <RemoveModuleDialog />
+              <AddModuleDialog />
             </div>
           )}
         </div>
@@ -164,7 +161,19 @@ export function ModuleGovernance({ isVerified, wallet }: ModuleGovernanceProps) 
           </Card>
         )}
 
-        <div className="space-y-6">
+        <div className="bg-muted/50 border border-border rounded-lg p-6 mb-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
+            <div className="space-y-1">
+              <p className="font-medium">Governance Features Coming Soon</p>
+              <p className="text-sm text-muted-foreground">
+                Module proposals and voting will be available in a future update. For now, verified students can add modules directly using the "Add Module" button above.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6 opacity-50 pointer-events-none">
           {proposals.map((proposal) => {
             const votePercentage = getVotePercentage(proposal.votesFor, proposal.totalVoters)
             const hasVoted = votedProposals.has(proposal.id)
@@ -235,18 +244,22 @@ export function ModuleGovernance({ isVerified, wallet }: ModuleGovernanceProps) 
                   <div className="flex gap-3 pt-2">
                     <Button
                       variant="outline"
-                      className="flex-1 gap-2 border-green-500/20 hover:bg-green-500/10 hover:text-green-600 hover:border-green-500/30"
-                      disabled={hasVoted || !isVerified || !wallet}
-                      onClick={() => handleVote(proposal.id, true)}
+                      className="flex-1 gap-2 border-green-500/20 hover:bg-green-500/10 hover:text-green-600 hover:border-green-500/30 opacity-50 cursor-not-allowed"
+                      disabled={true}
+                      onClick={() => {
+                        alert("Coming Soon: Governance voting will be implemented in a future update.")
+                      }}
                     >
                       <ThumbsUp className="w-4 h-4" />
                       Vote For
                     </Button>
                     <Button
                       variant="outline"
-                      className="flex-1 gap-2 border-red-500/20 hover:bg-red-500/10 hover:text-red-600 hover:border-red-500/30"
-                      disabled={hasVoted || !isVerified || !wallet}
-                      onClick={() => handleVote(proposal.id, false)}
+                      className="flex-1 gap-2 border-red-500/20 hover:bg-red-500/10 hover:text-red-600 hover:border-red-500/30 opacity-50 cursor-not-allowed"
+                      disabled={true}
+                      onClick={() => {
+                        alert("Coming Soon: Governance voting will be implemented in a future update.")
+                      }}
                     >
                       <ThumbsDown className="w-4 h-4" />
                       Vote Against

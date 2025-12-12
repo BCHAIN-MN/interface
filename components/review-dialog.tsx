@@ -12,11 +12,13 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Star, PenSquare } from 'lucide-react'
+import { Star, PenSquare, Loader2, Shield } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { submitReviewToChain } from '@/lib/contracts'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface ReviewDialogProps {
-  moduleId: number
+  moduleId: number | string
   moduleName: string
   isVerified?: boolean
   onReviewSubmitted?: () => void
@@ -30,23 +32,66 @@ export function ReviewDialog({ moduleId, moduleName, isVerified = false, onRevie
   const [reviewText, setReviewText] = useState('')
   const { toast } = useToast()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Here you would submit to blockchain
-    console.log('Submitting review:', { moduleId, rating, workload, difficulty, reviewText })
-    
-    toast({
-      title: 'Review Submitted! 🎉',
-      description: 'Your review has been recorded on the blockchain.',
-    })
-    
-    setOpen(false)
-    // Reset form
-    setRating(0)
-    setWorkload(0)
-    setDifficulty(0)
-    setReviewText('')
+    if (rating === 0 || workload === 0 || difficulty === 0 || !reviewText.trim()) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const moduleIdStr = typeof moduleId === 'string' ? moduleId : moduleId.toString()
+      const receipt = await submitReviewToChain(
+        moduleIdStr,
+        rating,
+        workload,
+        difficulty,
+        reviewText.trim()
+      )
+      
+      toast({
+        title: 'Review Submitted! 🎉',
+        description: `Transaction: ${receipt.hash.slice(0, 10)}...`,
+      })
+      
+      setOpen(false)
+      // Reset form
+      setRating(0)
+      setWorkload(0)
+      setDifficulty(0)
+      setReviewText('')
+      
+      // Notify parent to refresh data instead of reloading page
+      if (onReviewSubmitted) {
+        onReviewSubmitted()
+      }
+    } catch (error: any) {
+      console.error("[HSLU] Error submitting review:", error)
+      let errorMessage = error.message || "Failed to submit review"
+      
+      if (error.message && (error.message.includes("onlyVerifiedStudent") || error.message.includes("Not verified"))) {
+        errorMessage = "You need to be verified as an HSLU student first. Please contact the admin."
+      } else if (error.message && error.message.includes("does not exist")) {
+        errorMessage = "This module does not exist yet."
+      }
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   const StarRating = ({ 
@@ -157,10 +202,17 @@ export function ReviewDialog({ moduleId, moduleName, isVerified = false, onRevie
           <div className="flex items-center gap-3">
             <Button 
               type="submit" 
-              disabled={rating === 0 || workload === 0 || difficulty === 0 || !reviewText.trim()}
+              disabled={rating === 0 || workload === 0 || difficulty === 0 || !reviewText.trim() || loading}
               className="flex-1"
             >
-              Submit Review to Blockchain
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Submit Review to Blockchain"
+              )}
             </Button>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel

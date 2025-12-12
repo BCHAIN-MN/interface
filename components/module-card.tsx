@@ -25,6 +25,7 @@ interface ModuleCardProps {
 
 export function ModuleCard({ module, isVerified = false }: ModuleCardProps) {
   const [showReviews, setShowReviews] = useState(false)
+  const [reviewsRefreshTrigger, setReviewsRefreshTrigger] = useState(0)
 
   const workloadColor = {
     Low: 'bg-chart-3/10 text-chart-3 border-chart-3/20',
@@ -68,23 +69,29 @@ export function ModuleCard({ module, isVerified = false }: ModuleCardProps) {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Workload:</span>
-            <Badge variant="outline" className={workloadColor[module.workload as keyof typeof workloadColor]}>
-              {module.workload}
-            </Badge>
-          </div>
+        {(module.workload || module.difficulty) && (
+          <div className="flex items-center gap-3 flex-wrap">
+            {module.workload && (
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Workload:</span>
+                <Badge variant="outline" className={workloadColor[module.workload as keyof typeof workloadColor]}>
+                  {module.workload}
+                </Badge>
+              </div>
+            )}
 
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Difficulty:</span>
-            <Badge variant="outline" className={difficultyColor[module.difficulty as keyof typeof difficultyColor]}>
-              {module.difficulty}
-            </Badge>
+            {module.difficulty && (
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Difficulty:</span>
+                <Badge variant="outline" className={difficultyColor[module.difficulty as keyof typeof difficultyColor]}>
+                  {module.difficulty}
+                </Badge>
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
         <div className="flex items-center gap-3">
           <Button 
@@ -95,7 +102,15 @@ export function ModuleCard({ module, isVerified = false }: ModuleCardProps) {
             <MessageSquare className="w-4 h-4" />
             {showReviews ? 'Hide' : 'Read'} Reviews
           </Button>
-          <ReviewDialog moduleId={module.id} moduleName={module.name} />
+          <ReviewDialog 
+            moduleId={typeof module.id === 'string' ? module.id : module.id.toString()} 
+            moduleName={module.name}
+            isVerified={isVerified}
+            onReviewSubmitted={() => {
+              // Trigger refresh of reviews list
+              setReviewsRefreshTrigger(prev => prev + 1)
+            }}
+          />
         </div>
 
         {showReviews && <ReviewsList moduleId={module.id} />}

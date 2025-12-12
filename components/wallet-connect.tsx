@@ -12,7 +12,6 @@ import {
 import { Wallet, LogOut, User, Shield, ChevronDown } from "lucide-react"
 import { VerificationDialog } from "@/components/verification-dialog"
 import { Badge } from "@/components/ui/badge"
-import { isWalletVerified, clearVerification } from "@/lib/verification-stub"
 import { checkVerificationStatus } from "@/lib/contracts"
 
 interface WalletConnectProps {
@@ -28,23 +27,17 @@ export function WalletConnect({ onWalletChange }: WalletConnectProps = {}) {
     async function checkVerification() {
       if (!wallet) return
 
-      console.log(" Checking verification status...")
-
-      const stubVerified = isWalletVerified(wallet)
-
-      if (stubVerified) {
-        console.log(" Wallet verified (stub)")
-        setIsVerified(true)
-        onWalletChange?.(wallet, true)
-        return
-      }
+      console.log("[HSLU] Checking verification status...")
 
       const chainVerified = await checkVerificationStatus(wallet)
 
       if (chainVerified) {
-        console.log(" Wallet verified (on-chain)")
+        console.log("[HSLU] Wallet verified (on-chain)")
         setIsVerified(true)
         onWalletChange?.(wallet, true)
+      } else {
+        setIsVerified(false)
+        onWalletChange?.(wallet, false)
       }
     }
 
@@ -74,9 +67,6 @@ export function WalletConnect({ onWalletChange }: WalletConnectProps = {}) {
     setWallet(null)
     setIsVerified(false)
     setReputation(0)
-    if (wallet) {
-      clearVerification(wallet)
-    }
     onWalletChange?.(null, false)
   }
 

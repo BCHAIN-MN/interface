@@ -18,9 +18,11 @@ import { useToast } from '@/hooks/use-toast'
 interface ReviewDialogProps {
   moduleId: number
   moduleName: string
+  isVerified?: boolean
+  onReviewSubmitted?: () => void
 }
 
-export function ReviewDialog({ moduleId, moduleName }: ReviewDialogProps) {
+export function ReviewDialog({ moduleId, moduleName, isVerified = false, onReviewSubmitted }: ReviewDialogProps) {
   const [open, setOpen] = useState(false)
   const [rating, setRating] = useState(0)
   const [workload, setWorkload] = useState(0)
@@ -79,14 +81,36 @@ export function ReviewDialog({ moduleId, moduleName }: ReviewDialogProps) {
     </div>
   )
 
+  const WriteReviewButton = (
+    <Button className="gap-2" disabled={!isVerified}>
+      <PenSquare className="w-4 h-4" />
+      Write Review
+    </Button>
+  )
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="gap-2">
-          <PenSquare className="w-4 h-4" />
-          Write Review
-        </Button>
-      </DialogTrigger>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {isVerified ? (
+              <DialogTrigger asChild>
+                {WriteReviewButton}
+              </DialogTrigger>
+            ) : (
+              <div>{WriteReviewButton}</div>
+            )}
+          </TooltipTrigger>
+          {!isVerified && (
+            <TooltipContent>
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                <span>You need to be verified as an HSLU student to write reviews</span>
+              </div>
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl">Review {moduleName}</DialogTitle>

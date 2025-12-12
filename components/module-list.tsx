@@ -1,17 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { ModuleCard } from '@/components/module-card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Search, Filter } from 'lucide-react'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+interface ModuleListProps {
+  isVerified?: boolean
+}
 
 // Mock data - in production, this would come from blockchain/backend
 const mockModules = [
@@ -134,7 +125,7 @@ export function ModuleList() {
 
         <div className="grid gap-6">
           {filteredModules.map((module) => (
-            <ModuleCard key={module.id} module={module} />
+            <ModuleCard key={module.id} module={module} isVerified={isVerified} />
           ))}
         </div>
 

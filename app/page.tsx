@@ -1,11 +1,11 @@
 'use client'
 
-import {useState} from 'react'
-import {ModuleList} from '@/components/module-list'
-import {WalletConnect} from '@/components/wallet-connect'
-import {Hero} from '@/components/hero'
-import {Stats} from '@/components/stats'
-import {ModuleGovernance} from '@/components/module-governance'
+import { useState } from 'react'
+import { ModuleList } from '@/components/module-list'
+import { WalletConnect } from '@/components/wallet-connect'
+import { Hero } from '@/components/hero'
+import { Stats } from '@/components/stats'
+import { ModuleGovernance } from '@/components/module-governance'
 
 export default function Home() {
   const [wallet, setWallet] = useState<string | null>(null)
@@ -33,10 +33,10 @@ export default function Home() {
         </div>
       </div>
 
-            <Hero/>
-            <Stats/>
-            <ModuleGovernance isVerified={isVerified} wallet={wallet}/>
-            <ModuleList/>
-        </main>
-    )
+      <Hero />
+      <Stats />
+      <ModuleGovernance isVerified={isVerified} wallet={wallet} />
+      <ModuleList isVerified={isVerified} />
+    </main>
+  )
 }

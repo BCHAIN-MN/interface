@@ -20,9 +20,10 @@ interface ModuleCardProps {
     difficulty: string
     description: string
   }
+  isVerified?: boolean
 }
 
-export function ModuleCard({ module }: ModuleCardProps) {
+export function ModuleCard({ module, isVerified = false }: ModuleCardProps) {
   const [showReviews, setShowReviews] = useState(false)
 
   const workloadColor = {

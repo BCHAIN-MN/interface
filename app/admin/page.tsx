@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 export default function AdminPage() {
   const [wallet, setWallet] = useState<string | null>(null)
   const [isOwner, setIsOwner] = useState<boolean | null>(null)
+  const [ownerAddress, setOwnerAddress] = useState<string | null>(null)
   const [verifiedStudents, setVerifiedStudents] = useState<Array<{ address: string; tokenId: number }>>([])
   const [loading, setLoading] = useState(false)
 
@@ -22,6 +23,21 @@ export default function AdminPage() {
     } else {
       setIsOwner(null)
       setVerifiedStudents([])
+    }
+  }
+
+  const fetchOwnerAddress = async () => {
+    try {
+      const contract = await getStudentIdentityContract(false)
+      if (!contract) {
+        console.warn("[admin] Could not get contract instance")
+        return
+      }
+
+      const owner = await contract.owner()
+      setOwnerAddress(owner)
+    } catch (error) {
+      console.error("[admin] Error fetching owner address:", error)
     }
   }
 
@@ -40,6 +56,10 @@ export default function AdminPage() {
       setIsOwner(false)
     }
   }
+
+  useEffect(() => {
+    fetchOwnerAddress()
+  }, [])
 
   const loadVerifiedStudents = async () => {
     setLoading(true)
@@ -76,11 +96,11 @@ export default function AdminPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Owner Status */}
-          {wallet && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {isOwner ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {wallet && isOwner !== null ? (
+                  isOwner ? (
                     <>
                       <CheckCircle className="w-5 h-5 text-green-500" />
                       <span>You are the Contract Owner</span>
@@ -90,21 +110,63 @@ export default function AdminPage() {
                       <XCircle className="w-5 h-5 text-red-500" />
                       <span>You are NOT the Contract Owner</span>
                     </>
-                  )}
-                </CardTitle>
-                <CardDescription>
-                  {isOwner
+                  )
+                ) : (
+                  <span>Contract Owner Information</span>
+                )}
+              </CardTitle>
+              <CardDescription>
+                {wallet && isOwner !== null
+                  ? isOwner
                     ? "You can issue badges to students."
-                    : "Only the contract owner can issue badges. Connect with the owner account (first Ganache account)."}
-                </CardDescription>
-              </CardHeader>
+                    : "Only the contract owner can issue badges. Connect with the owner account (first Ganache account)."
+                  : "Connect your wallet to check if you are the contract owner."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Contract Owner Address */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Contract Owner Address</p>
+                {ownerAddress ? (
+                  <div className="p-3 bg-muted rounded-lg border border-border">
+                    <p className="text-sm font-mono">{ownerAddress}</p>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-muted rounded-lg border border-border">
+                    <p className="text-sm text-muted-foreground">Loading...</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Connected Wallet Address */}
               {wallet && (
-                <CardContent>
-                  <p className="text-sm font-mono">{wallet}</p>
-                </CardContent>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Connected Wallet Address</p>
+                  <div
+                    className={`p-3 rounded-lg border ${
+                      isOwner === true
+                        ? "bg-green-50 dark:bg-green-950/20 border-green-500 text-green-700 dark:text-green-400"
+                        : isOwner === false
+                        ? "bg-red-50 dark:bg-red-950/20 border-red-500 text-red-700 dark:text-red-400"
+                        : "bg-muted border-border"
+                    }`}
+                  >
+                    <p className="text-sm font-mono">{wallet}</p>
+                  </div>
+                  {isOwner === true && (
+                    <p className="text-xs text-green-600 dark:text-green-400">
+                      This wallet matches the contract owner address.
+                    </p>
+                  )}
+                  {isOwner === false && (
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                      This wallet does not match the contract owner address.
+                    </p>
+                  )}
+                </div>
               )}
-            </Card>
-          )}
+            </CardContent>
+          </Card>
 
           {/* Badge Issuer */}
           {wallet && isOwner && (
@@ -184,11 +246,8 @@ export default function AdminPage() {
                   </p>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm font-mono text-muted-foreground">
-                    Owner Account: 0xb34eD58b926E92818f10caa81735EBCFd41fEe06
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    (First account from Ganache - use this to issue badges)
+                  <p className="text-sm text-muted-foreground">
+                    The contract owner address is displayed above. Use that account to issue badges.
                   </p>
                 </div>
               </CardContent>

@@ -4,8 +4,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Star, Shield } from 'lucide-react'
-import { useState, useEffect } from 'react'
-import { fetchReviewsForModule, checkVerificationStatus } from '@/lib/contracts'
+import { useState, useEffect, useCallback } from 'react'
+import { fetchReviewsForModule, checkVerificationStatus, getModuleReviewsContract } from '@/lib/contracts'
 
 interface ReviewsListProps {
   moduleId: number | string
@@ -28,33 +28,59 @@ export function ReviewsList({ moduleId, refreshTrigger }: ReviewsListProps) {
   const [loading, setLoading] = useState(true)
   const [verifiedStatus, setVerifiedStatus] = useState<Record<string, boolean>>({})
 
-  useEffect(() => {
-    async function loadReviews() {
-      setLoading(true)
-      const moduleIdStr = typeof moduleId === 'string' ? moduleId : moduleId.toString()
-      const fetchedReviews = await fetchReviewsForModule(moduleIdStr)
-      
-      if (fetchedReviews) {
-        setReviews(fetchedReviews)
-        
-        // Check verification status for each reviewer
-        const statuses: Record<string, boolean> = {}
-        for (const review of fetchedReviews) {
-          if (!statuses[review.reviewer]) {
-            try {
-              statuses[review.reviewer] = await checkVerificationStatus(review.reviewer)
-            } catch (error) {
-              statuses[review.reviewer] = false
-            }
+  const loadReviews = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true)
+    const moduleIdStr = typeof moduleId === 'string' ? moduleId : moduleId.toString()
+    const fetchedReviews = await fetchReviewsForModule(moduleIdStr)
+
+    if (fetchedReviews) {
+      setReviews(fetchedReviews)
+
+      const statuses: Record<string, boolean> = {}
+      for (const review of fetchedReviews) {
+        if (!statuses[review.reviewer]) {
+          try {
+            statuses[review.reviewer] = await checkVerificationStatus(review.reviewer)
+          } catch (error) {
+            statuses[review.reviewer] = false
           }
         }
-        setVerifiedStatus(statuses)
       }
-      setLoading(false)
+      setVerifiedStatus(statuses)
+    }
+    if (showLoading) setLoading(false)
+  }, [moduleId])
+
+  useEffect(() => {
+    loadReviews(true)
+  }, [loadReviews, refreshTrigger])
+
+  useEffect(() => {
+    let contract: any = null
+    const moduleIdStr = typeof moduleId === 'string' ? moduleId : moduleId.toString()
+
+    const setupListener = async () => {
+      contract = await getModuleReviewsContract(false)
+      if (!contract) return
+
+      console.log(`🎧 Listening for reviews on module: ${moduleIdStr}`)
+
+      const filter = contract.filters.ReviewAdded(moduleIdStr)
+
+      contract.on(filter, (id: string, reviewer: string, rating: number) => {
+        console.log(`⚡ New review detected for ${moduleIdStr}!`)
+        loadReviews(false)
+      })
     }
 
-    loadReviews()
-  }, [moduleId, refreshTrigger])
+    setupListener()
+
+    return () => {
+      if (contract) {
+        contract.removeAllListeners()
+      }
+    }
+  }, [moduleId, loadReviews])
 
   if (loading) {
     return (
@@ -80,11 +106,11 @@ export function ReviewsList({ moduleId, refreshTrigger }: ReviewsListProps) {
   return (
     <div className="space-y-4 pt-4 border-t">
       <h3 className="font-semibold text-lg">Student Reviews</h3>
-      
+
       {reviews.map((review) => {
         const isVerified = verifiedStatus[review.reviewer] || false
         const shortAddress = `${review.reviewer.slice(0, 6)}...${review.reviewer.slice(-4)}`
-        
+
         return (
           <Card key={review.id} className="bg-muted/30">
             <CardContent className="pt-6 space-y-4">

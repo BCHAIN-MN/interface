@@ -139,7 +139,7 @@ export function ModuleGovernance({ isVerified, wallet }: ModuleGovernanceProps) 
               Governance features coming soon. Currently, verified students can add modules directly using the button above.
             </p>
           </div>
-          
+
           {isVerified && wallet && (
             <div className="flex gap-3">
               <AddModuleDialog />
@@ -184,11 +184,10 @@ export function ModuleGovernance({ isVerified, wallet }: ModuleGovernanceProps) 
               <Card key={proposal.id} className="p-6 space-y-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4 flex-1">
-                    <div className={`p-3 rounded-lg shrink-0 ${
-                      proposal.type === 'add' 
-                        ? 'bg-green-500/10 text-green-600' 
-                        : 'bg-red-500/10 text-red-600'
-                    }`}>
+                    <div className={`p-3 rounded-lg shrink-0 ${proposal.type === 'add'
+                      ? 'bg-green-500/10 text-green-600'
+                      : 'bg-red-500/10 text-red-600'
+                      }`}>
                       {proposal.type === 'add' ? (
                         <Plus className="w-5 h-5" />
                       ) : (
@@ -206,7 +205,7 @@ export function ModuleGovernance({ isVerified, wallet }: ModuleGovernanceProps) 
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>Proposed by {proposal.proposer}</span>
                         <span>•</span>
-                        <span>{proposal.createdAt.toLocaleDateString()}</span>
+                        <span>{proposal.createdAt.toLocaleDateString('de-DE')}</span>
                         {isActive && (
                           <>
                             <span>•</span>

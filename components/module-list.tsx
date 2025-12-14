@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { ModuleCard } from "@/components/module-card"
 import { Input } from "@/components/ui/input"
 import { Search, Filter } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { fetchModulesFromChain } from "@/lib/contracts"
+import { fetchModulesFromChain, getModuleReviewsContract } from "@/lib/contracts"
+import { useToast } from "@/hooks/use-toast"
 
 interface ModuleListProps {
   isVerified?: boolean
@@ -26,27 +27,67 @@ export function ModuleList({ isVerified = false }: ModuleListProps) {
     description?: string
   }>>([])
   const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
+
+  const loadModules = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true)
+    const chainModules = await fetchModulesFromChain()
+    setModules(chainModules || [])
+    if (showLoading) setLoading(false)
+  }, [])
 
   useEffect(() => {
-    async function loadModules() {
-      setLoading(true)
-      const chainModules = await fetchModulesFromChain()
-      setModules(chainModules || [])
-      setLoading(false)
+    loadModules(true)
+  }, [loadModules])
+
+
+  useEffect(() => {
+    let contract: any = null
+
+    const setupEventListeners = async () => {
+      contract = await getModuleReviewsContract(false)
+
+      if (!contract) return
+
+      console.log("🎧 Listening for Blockchain events...")
+
+      contract.on("ModuleAdded", (moduleId: string) => {
+        console.log("⚡ Event: ModuleAdded", moduleId)
+
+        toast({
+          title: "New Module Detected",
+          description: `Module ${moduleId} was just added to the chain.`,
+        })
+
+        loadModules(false)
+      })
+
+      contract.on("ReviewAdded", (moduleId: string, reviewer: string, rating: number) => {
+        console.log("⚡ Event: ReviewAdded", moduleId)
+
+        loadModules(false)
+      })
     }
 
-    loadModules()
-  }, [])
+    setupEventListeners()
+
+    return () => {
+      if (contract) {
+        console.log("🛑 Removing listeners")
+        contract.removeAllListeners()
+      }
+    }
+  }, [loadModules, toast])
+
 
   const filteredModules = modules.filter((module) => {
     const matchesSearch =
-      module.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      module.description.toLowerCase().includes(searchQuery.toLowerCase())
+      module.name.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesDepartment = departmentFilter === "all" || module.department === departmentFilter
     return matchesSearch && matchesDepartment
   })
 
-  const departments = Array.from(new Set(modules.map((m) => m.department)))
+  const departments = Array.from(new Set(modules.map((m) => m.department).filter(Boolean)))
 
   if (loading) {
     return (

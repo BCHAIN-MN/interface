@@ -33,7 +33,7 @@ export default function Home() {
         </div>
       </div>
 
-      <Hero />
+      <Hero wallet={wallet} />
       <Stats />
       <ModuleGovernance isVerified={isVerified} wallet={wallet} />
       <ModuleList isVerified={isVerified} />

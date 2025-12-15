@@ -13,7 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Shield, AlertCircle } from "lucide-react"
+import { Shield, AlertCircle, Copy, Check } from "lucide-react"
 
 interface VerificationDialogProps {
   wallet: string
@@ -22,6 +22,19 @@ interface VerificationDialogProps {
 
 export function VerificationDialog({ wallet, onVerified }: VerificationDialogProps) {
   const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyAddress = async () => {
+    if (!wallet) return
+    
+    try {
+      await navigator.clipboard.writeText(wallet)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('[HSLU] Failed to copy address:', err)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -65,7 +78,24 @@ export function VerificationDialog({ wallet, onVerified }: VerificationDialogPro
 
           <div className="space-y-2">
             <Label>Connected Wallet</Label>
-            <div className="p-3 bg-muted rounded-lg font-mono text-sm">{wallet}</div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 p-3 bg-muted rounded-lg font-mono text-sm break-all">
+                {wallet}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={handleCopyAddress}
+                className="shrink-0"
+              >
+                {copied ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">
               Share this address with the owner when requesting verification.
             </p>

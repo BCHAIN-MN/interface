@@ -76,12 +76,45 @@ export async function ensureGanacheNetwork() {
   }
 }
 
-// Helper to get provider
+// Helper to get provider (with fallback to RPC for read-only operations)
 export function getProvider() {
-  if (typeof window === "undefined" || !window.ethereum) {
-    return null
+  // Try MetaMask first
+  if (typeof window !== "undefined" && window.ethereum) {
+    const provider = new ethers.BrowserProvider(window.ethereum)
+    // Disable ENS for networks that don't support it (like Polygon Amoy)
+    // Override resolveName to prevent ENS lookups and suppress warnings
+    const originalResolveName = provider.resolveName.bind(provider)
+    provider.resolveName = async (name: string) => {
+      // If it's already a valid address, return it directly
+      if (ethers.isAddress(name)) {
+        return name
+      }
+      // For non-address strings, don't attempt ENS resolution on non-ENS networks
+      // This prevents the "network does not support ENS" warning
+      try {
+        return await originalResolveName(name)
+      } catch (error: any) {
+        // If it's an ENS-related error, return null instead of throwing
+        if (error?.code === "UNSUPPORTED_OPERATION" && error?.operation === "getEnsAddress") {
+          return null
+        }
+        throw error
+      }
+    }
+    return provider
   }
-  return new ethers.BrowserProvider(window.ethereum)
+  
+  // Fallback: Use public RPC for Polygon Amoy (read-only operations)
+  // This allows fetching owner address even without MetaMask connected
+  try {
+    // Use the same RPC URL as configured in web3-config.ts
+    const rpcUrl = "https://polygon-amoy.drpc.org"
+    return new ethers.JsonRpcProvider(rpcUrl)
+  } catch (error) {
+    console.warn("[HSLU] Could not create fallback RPC provider:", error)
+  }
+  
+  return null
 }
 
 // Helper to get signer
@@ -128,11 +161,28 @@ export async function getStudentIdentityContract(withSigner = false) {
 
   if (withSigner) {
     const signer = await getSigner()
-    if (!signer) return null
+    if (!signer) {
+      console.warn("[HSLU] No signer available - MetaMask not connected")
+      return null
+    }
     return new ethers.Contract(address, STUDENT_IDENTITY_ABI, signer)
   } else {
     const provider = getProvider()
-    if (!provider) return null
+    if (!provider) {
+      console.warn("[HSLU] No provider available - MetaMask not detected and no fallback RPC")
+      return null
+    }
+    // Verify contract exists at address
+    try {
+      const code = await provider.getCode(address)
+      if (!code || code === "0x") {
+        console.error("[HSLU] No contract code found at address:", address)
+        return null
+      }
+    } catch (error) {
+      console.error("[HSLU] Error checking contract code:", error)
+      return null
+    }
     return new ethers.Contract(address, STUDENT_IDENTITY_ABI, provider)
   }
 }
@@ -159,7 +209,7 @@ export async function fetchModulesFromChain() {
       console.error("[HSLU] No contract code found. Make sure you're connected to Ganache (Chain ID: 1337)")
       return null
     }
-    
+
     const moduleIds = await contract.getAllModuleIds()
 
     // Handle empty array case
@@ -341,9 +391,20 @@ export async function getAllVerifiedStudents() {
       return []
     }
 
+    // Get current block number
+    const currentBlock = await provider.getBlockNumber()
+
+    // Try to get deployment block from contract creation
+    // For now, we'll use a reasonable range (last 100k blocks or from block 0)
+    // You can optimize this by storing the deployment block
+    const fromBlock = Math.max(0, currentBlock - 100000) // Last 100k blocks
+    const toBlock = currentBlock
+
     // Filter Transfer events where from is address(0) (minting events)
     const filter = contract.filters.Transfer(null, null, null)
-    const events = await contract.queryFilter(filter)
+    
+    // Query with block range
+    const events = await contract.queryFilter(filter, fromBlock, toBlock)
 
     // Get all mint events (from == address(0))
     const students: Array<{ address: string; tokenId: number }> = []
@@ -352,18 +413,24 @@ export async function getAllVerifiedStudents() {
         const from = event.args[0] as string
         const to = event.args[1] as string
         const tokenId = event.args[2] as bigint
-        if (from === "0x0000000000000000000000000000000000000000") {
+        
+        // Check if this is a mint event (from == address(0))
+        if (from && from.toLowerCase() === "0x0000000000000000000000000000000000000000") {
           students.push({
-            address: to,
+            address: to.toLowerCase(),
             tokenId: Number(tokenId),
           })
         }
       }
     }
-
     return students
   } catch (error) {
     console.error("[HSLU] Error fetching verified students:", error)
+    // Log more details about the error
+    if (error instanceof Error) {
+      console.error("[HSLU] Error message:", error.message)
+      console.error("[HSLU] Error stack:", error.stack)
+    }
     return []
   }
 }

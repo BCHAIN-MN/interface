@@ -16,7 +16,7 @@ export default function AdminPage() {
   const [verifiedStudents, setVerifiedStudents] = useState<Array<{ address: string; tokenId: number }>>([])
   const [loading, setLoading] = useState(false)
 
-  const handleWalletChange = (newWallet: string | null) => {
+  const handleWalletChange = (newWallet: string | null, isVerified?: boolean) => {
     setWallet(newWallet)
     if (newWallet) {
       checkOwnerStatus(newWallet)

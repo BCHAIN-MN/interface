@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -18,10 +18,82 @@ interface WalletConnectProps {
   onWalletChange?: (wallet: string | null, isVerified: boolean) => void
 }
 
+const WALLET_STORAGE_KEY = "HSLU_WALLET_ADDRESS"
+const WALLET_DISCONNECTED_KEY = "HSLU_WALLET_DISCONNECTED"
+
 export function WalletConnect({ onWalletChange }: WalletConnectProps = {}) {
   const [wallet, setWallet] = useState<string | null>(null)
   const [isVerified, setIsVerified] = useState(false)
   const [reputation, setReputation] = useState(0)
+  const [isConnecting, setIsConnecting] = useState(false)
+
+  // Helper: Clear wallet state and mark as disconnected
+  const clearWalletState = useCallback(() => {
+    setWallet(null)
+    setIsVerified(false)
+    setReputation(0)
+    localStorage.setItem(WALLET_DISCONNECTED_KEY, "true")
+    localStorage.removeItem(WALLET_STORAGE_KEY)
+    onWalletChange?.(null, false)
+  }, [onWalletChange])
+
+  // Helper: Set wallet and save to localStorage
+  const setWalletAndSave = useCallback((account: string) => {
+    setWallet(account)
+    localStorage.setItem(WALLET_STORAGE_KEY, account)
+    localStorage.removeItem(WALLET_DISCONNECTED_KEY)
+  }, [])
+
+  // Auto-reconnect wallet on mount if user didn't disconnect
+  useEffect(() => {
+    const wasDisconnected = localStorage.getItem(WALLET_DISCONNECTED_KEY) === "true"
+    const storedWallet = localStorage.getItem(WALLET_STORAGE_KEY)
+    
+    if (wasDisconnected) {
+      localStorage.removeItem(WALLET_STORAGE_KEY)
+      return
+    }
+
+    if (storedWallet && typeof window.ethereum !== "undefined") {
+      window.ethereum
+        .request({ method: "eth_accounts" })
+        .then((accounts: string[]) => {
+          if (accounts.length > 0 && accounts[0].toLowerCase() === storedWallet.toLowerCase()) {
+            setWallet(accounts[0])
+          } else {
+            localStorage.removeItem(WALLET_STORAGE_KEY)
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem(WALLET_STORAGE_KEY)
+        })
+    }
+  }, [])
+
+  // Listen for wallet account and chain changes
+  useEffect(() => {
+    if (typeof window.ethereum === "undefined") return
+
+    const handleAccountsChanged = (accounts: string[]) => {
+      if (accounts.length === 0) {
+        clearWalletState()
+      } else if (accounts[0].toLowerCase() !== wallet?.toLowerCase()) {
+        setWalletAndSave(accounts[0])
+      }
+    }
+
+    const handleChainChanged = () => {
+      window.location.reload()
+    }
+
+    window.ethereum.on("accountsChanged", handleAccountsChanged)
+    window.ethereum.on("chainChanged", handleChainChanged)
+
+    return () => {
+      window.ethereum.removeListener("accountsChanged", handleAccountsChanged)
+      window.ethereum.removeListener("chainChanged", handleChainChanged)
+    }
+  }, [wallet, clearWalletState, setWalletAndSave])
 
   useEffect(() => {
     async function checkVerification() {
@@ -44,31 +116,59 @@ export function WalletConnect({ onWalletChange }: WalletConnectProps = {}) {
     checkVerification()
   }, [wallet, onWalletChange])
 
-  const connectWallet = async () => {
+  // Try to revoke permissions if user was disconnected (ensures popup on reconnect)
+  const tryRevokePermissions = useCallback(async () => {
+    try {
+      const cachedAccounts = await window.ethereum.request({ method: "eth_accounts" })
+      if (cachedAccounts.length > 0) {
+        await window.ethereum.request({
+          method: "wallet_revokePermissions",
+          params: [{ eth_accounts: {} }],
+        })
+      }
+    } catch {
+      // wallet_revokePermissions might not be supported - that's okay
+    }
+  }, [])
+
+  const connectWallet = useCallback(async () => {
     if (typeof window.ethereum === "undefined") {
       alert("Please install MetaMask to use this feature")
       return
     }
 
+    setIsConnecting(true)
     try {
-      // @ts-ignore
+      const wasDisconnected = localStorage.getItem(WALLET_DISCONNECTED_KEY) === "true"
+      
+      // Try to revoke permissions if user was disconnected (ensures popup on reconnect)
+      if (wasDisconnected) {
+        await tryRevokePermissions()
+      }
+      
+      // Request account access (shows MetaMask popup)
       const accounts = await window.ethereum.request({
         method: "eth_requestAccounts",
       })
-      setWallet(accounts[0])
-      setReputation(42)
-      onWalletChange?.(accounts[0], isVerified)
-    } catch (error) {
-      console.error("Failed to connect wallet:", error)
+      
+      if (accounts.length > 0) {
+        setWalletAndSave(accounts[0])
+        setReputation(42)
+        onWalletChange?.(accounts[0], isVerified)
+      }
+    } catch (error: any) {
+      console.error("[HSLU] Failed to connect wallet:", error)
+      if (error.code === 4001) {
+        console.log("[HSLU] User rejected wallet connection")
+      }
+    } finally {
+      setIsConnecting(false)
     }
-  }
+  }, [isVerified, onWalletChange, tryRevokePermissions, setWalletAndSave])
 
-  const disconnectWallet = () => {
-    setWallet(null)
-    setIsVerified(false)
-    setReputation(0)
-    onWalletChange?.(null, false)
-  }
+  const disconnectWallet = useCallback(() => {
+    clearWalletState()
+  }, [clearWalletState])
 
   const handleVerified = () => {
     setIsVerified(true)
@@ -77,9 +177,9 @@ export function WalletConnect({ onWalletChange }: WalletConnectProps = {}) {
 
   if (!wallet) {
     return (
-      <Button onClick={connectWallet} size="lg" className="gap-2">
+      <Button onClick={connectWallet} size="lg" className="gap-2" disabled={isConnecting}>
         <Wallet className="w-4 h-4" />
-        Connect Wallet
+        {isConnecting ? "Connecting..." : "Connect Wallet"}
       </Button>
     )
   }

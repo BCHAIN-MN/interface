@@ -21,22 +21,29 @@ interface ModuleCardProps {
     description?: string
   }
   isVerified?: boolean
+  onModuleUpdate?: () => void
 }
 
-export function ModuleCard({ module, isVerified = false }: ModuleCardProps) {
+const workloadColor = {
+  Low: 'bg-chart-3/10 text-chart-3 border-chart-3/20',
+  Medium: 'bg-chart-4/10 text-chart-4 border-chart-4/20',
+  High: 'bg-chart-1/10 text-chart-1 border-chart-1/20',
+}
+
+const difficultyColor = {
+  Low: 'bg-chart-3/10 text-chart-3 border-chart-3/20',
+  Medium: 'bg-chart-4/10 text-chart-4 border-chart-4/20',
+  High: 'bg-chart-1/10 text-chart-1 border-chart-1/20',
+}
+
+export function ModuleCard({ module, isVerified = false, onModuleUpdate }: ModuleCardProps) {
   const [showReviews, setShowReviews] = useState(false)
   const [reviewsRefreshTrigger, setReviewsRefreshTrigger] = useState(0)
+  const moduleIdStr = typeof module.id === 'string' ? module.id : module.id.toString()
 
-  const workloadColor = {
-    Low: 'bg-chart-3/10 text-chart-3 border-chart-3/20',
-    Medium: 'bg-chart-4/10 text-chart-4 border-chart-4/20',
-    High: 'bg-chart-1/10 text-chart-1 border-chart-1/20',
-  }
-
-  const difficultyColor = {
-    Low: 'bg-chart-3/10 text-chart-3 border-chart-3/20',
-    Medium: 'bg-chart-4/10 text-chart-4 border-chart-4/20',
-    High: 'bg-chart-1/10 text-chart-1 border-chart-1/20',
+  const handleReviewSubmitted = () => {
+    setReviewsRefreshTrigger(prev => prev + 1)
+    onModuleUpdate?.()
   }
 
   return (
@@ -108,26 +115,28 @@ export function ModuleCard({ module, isVerified = false }: ModuleCardProps) {
         )}
 
         <div className="flex items-center gap-3">
-          <Button 
+          <Button
             onClick={() => setShowReviews(!showReviews)}
-            variant="outline" 
+            variant="outline"
             className="gap-2"
           >
             <MessageSquare className="w-4 h-4" />
             {showReviews ? 'Hide' : 'Read'} Reviews
           </Button>
-          <ReviewDialog 
-            moduleId={typeof module.id === 'string' ? module.id : module.id.toString()} 
+          <ReviewDialog
+            moduleId={moduleIdStr}
             moduleName={module.name}
             isVerified={isVerified}
-            onReviewSubmitted={() => {
-              // Trigger refresh of reviews list
-              setReviewsRefreshTrigger(prev => prev + 1)
-            }}
+            onReviewSubmitted={handleReviewSubmitted}
           />
         </div>
 
-        {showReviews && <ReviewsList moduleId={typeof module.id === 'string' ? module.id : module.id.toString()} refreshTrigger={reviewsRefreshTrigger} />}
+        {showReviews && (
+          <ReviewsList
+            moduleId={moduleIdStr}
+            refreshTrigger={reviewsRefreshTrigger}
+          />
+        )}
       </CardContent>
     </Card>
   )

@@ -12,20 +12,22 @@ interface ModuleListProps {
   isVerified?: boolean
 }
 
+type Module = {
+  id: number | string
+  name: string
+  department?: string
+  semester?: number
+  averageRating?: number
+  totalReviews?: number
+  workload?: string
+  difficulty?: string
+  description?: string
+}
+
 export function ModuleList({ isVerified = false }: ModuleListProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState<string>("all")
-  const [modules, setModules] = useState<Array<{
-    id: number | string
-    name: string
-    department?: string
-    semester?: number
-    averageRating?: number
-    totalReviews?: number
-    workload?: string
-    difficulty?: string
-    description?: string
-  }>>([])
+  const [modules, setModules] = useState<Module[]>([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
@@ -36,53 +38,118 @@ export function ModuleList({ isVerified = false }: ModuleListProps) {
     if (showLoading) setLoading(false)
   }, [])
 
+  const refreshModules = useCallback(() => {
+    setTimeout(() => loadModules(false), 2000)
+  }, [loadModules])
+
   useEffect(() => {
     loadModules(true)
   }, [loadModules])
 
-
   useEffect(() => {
     let contract: any = null
+    let provider: any = null
+    let lastBlockNumber = 0
+    let useBlockListener = false
 
-    const setupEventListeners = async () => {
+    const setupListeners = async () => {
       contract = await getModuleReviewsContract(false)
-
       if (!contract) return
 
-      console.log("🎧 Listening for Blockchain events...")
+      provider = contract.provider
+      if (!provider) return
 
-      contract.on("ModuleAdded", (moduleId: string) => {
-        console.log("⚡ Event: ModuleAdded", moduleId)
+      // Try event listeners first (optimal)
+      try {
+        if (window.ethereum) {
+          contract.on("ModuleAdded", (moduleId: string) => {
+            toast({
+              title: "New Module Detected",
+              description: `Module ${moduleId} was just added to the chain.`,
+            })
+            loadModules(false)
+          })
 
-        toast({
-          title: "New Module Detected",
-          description: `Module ${moduleId} was just added to the chain.`,
-        })
+          contract.on("ReviewAdded", () => {
+            loadModules(false)
+          })
 
-        loadModules(false)
-      })
+          provider.on('error', () => {
+            if (!useBlockListener) {
+              contract.removeAllListeners()
+              setupBlockListener()
+            }
+          })
 
-      contract.on("ReviewAdded", (moduleId: string, reviewer: string, rating: number) => {
-        console.log("⚡ Event: ReviewAdded", moduleId)
+          return
+        }
+      } catch (error) {
+        console.warn("[WARN] Event listeners not available, using block listener")
+      }
 
-        loadModules(false)
+      // Fallback: block listener
+      setupBlockListener()
+    }
+
+    const setupBlockListener = async () => {
+      useBlockListener = true
+
+      try {
+        lastBlockNumber = await provider.getBlockNumber()
+      } catch (error) {
+        console.warn("[WARN] Could not get block number:", error)
+        return
+      }
+
+      provider.on('block', async (blockNumber: number) => {
+        if (blockNumber <= lastBlockNumber) return
+
+        try {
+          const moduleEvents = await contract.queryFilter(
+            contract.filters.ModuleAdded(),
+            lastBlockNumber,
+            blockNumber
+          )
+
+          const reviewEvents = await contract.queryFilter(
+            contract.filters.ReviewAdded(),
+            lastBlockNumber,
+            blockNumber
+          )
+
+          if (moduleEvents.length > 0 || reviewEvents.length > 0) {
+            if (moduleEvents.length > 0) {
+              const moduleId = moduleEvents[moduleEvents.length - 1].args[0]
+              toast({
+                title: "New Module Detected",
+                description: `Module ${moduleId} was just added to the chain.`,
+              })
+            }
+            loadModules(false)
+          }
+
+          lastBlockNumber = blockNumber
+        } catch (error) {
+          console.error("[ERROR] Error checking for events:", error)
+        }
       })
     }
 
-    setupEventListeners()
+    setupListeners()
 
     return () => {
-      if (contract) {
-        console.log("🛑 Removing listeners")
+      if (contract && !useBlockListener) {
         contract.removeAllListeners()
+      }
+      if (provider) {
+        provider.removeAllListeners('block')
+        provider.removeAllListeners('error')
       }
     }
   }, [loadModules, toast])
 
-
   const filteredModules = modules.filter((module) => {
-    const matchesSearch =
-      module.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = module.name.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesDepartment = departmentFilter === "all" || module.department === departmentFilter
     return matchesSearch && matchesDepartment
   })
@@ -135,7 +202,12 @@ export function ModuleList({ isVerified = false }: ModuleListProps) {
 
         <div className="grid gap-6">
           {filteredModules.map((module) => (
-            <ModuleCard key={module.id} module={module} isVerified={isVerified} />
+            <ModuleCard
+              key={module.id}
+              module={module}
+              isVerified={isVerified}
+              onModuleUpdate={refreshModules}
+            />
           ))}
         </div>
 

@@ -28,9 +28,10 @@ export function ReviewsList({ moduleId, refreshTrigger }: ReviewsListProps) {
   const [loading, setLoading] = useState(true)
   const [verifiedStatus, setVerifiedStatus] = useState<Record<string, boolean>>({})
 
+  const moduleIdStr = typeof moduleId === 'string' ? moduleId : moduleId.toString()
+
   const loadReviews = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true)
-    const moduleIdStr = typeof moduleId === 'string' ? moduleId : moduleId.toString()
     const fetchedReviews = await fetchReviewsForModule(moduleIdStr)
 
     if (fetchedReviews) {
@@ -49,7 +50,7 @@ export function ReviewsList({ moduleId, refreshTrigger }: ReviewsListProps) {
       setVerifiedStatus(statuses)
     }
     if (showLoading) setLoading(false)
-  }, [moduleId])
+  }, [moduleIdStr])
 
   useEffect(() => {
     loadReviews(true)
@@ -57,30 +58,82 @@ export function ReviewsList({ moduleId, refreshTrigger }: ReviewsListProps) {
 
   useEffect(() => {
     let contract: any = null
-    const moduleIdStr = typeof moduleId === 'string' ? moduleId : moduleId.toString()
+    let provider: any = null
+    let lastBlockNumber = 0
+    let useBlockListener = false
 
-    const setupListener = async () => {
+    const setupListeners = async () => {
       contract = await getModuleReviewsContract(false)
       if (!contract) return
 
-      console.log(`🎧 Listening for reviews on module: ${moduleIdStr}`)
+      provider = contract.provider
+      if (!provider) return
 
-      const filter = contract.filters.ReviewAdded(moduleIdStr)
+      // Try event listener first (optimal)
+      try {
+        if (window.ethereum) {
+          const filter = contract.filters.ReviewAdded(moduleIdStr)
+          contract.on(filter, () => {
+            loadReviews(false)
+          })
 
-      contract.on(filter, (id: string, reviewer: string, rating: number) => {
-        console.log(`⚡ New review detected for ${moduleIdStr}!`)
-        loadReviews(false)
+          provider.on('error', () => {
+            if (!useBlockListener) {
+              contract.removeAllListeners()
+              setupBlockListener()
+            }
+          })
+
+          return
+        }
+      } catch (error) {
+        console.warn("[WARN] Event listener not available, using block listener")
+      }
+
+      // Fallback: block listener
+      setupBlockListener()
+    }
+
+    const setupBlockListener = async () => {
+      useBlockListener = true
+
+      try {
+        lastBlockNumber = await provider.getBlockNumber()
+      } catch (error) {
+        console.warn("[WARN] Could not get block number:", error)
+        return
+      }
+
+      provider.on('block', async (blockNumber: number) => {
+        if (blockNumber <= lastBlockNumber) return
+
+        try {
+          const filter = contract.filters.ReviewAdded(moduleIdStr)
+          const events = await contract.queryFilter(filter, lastBlockNumber, blockNumber)
+
+          if (events.length > 0) {
+            loadReviews(false)
+          }
+
+          lastBlockNumber = blockNumber
+        } catch (error) {
+          console.error("[ERROR] Error checking for reviews:", error)
+        }
       })
     }
 
-    setupListener()
+    setupListeners()
 
     return () => {
-      if (contract) {
+      if (contract && !useBlockListener) {
         contract.removeAllListeners()
       }
+      if (provider) {
+        provider.removeAllListeners('block')
+        provider.removeAllListeners('error')
+      }
     }
-  }, [moduleId, loadReviews])
+  }, [moduleIdStr, loadReviews])
 
   if (loading) {
     return (

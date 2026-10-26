@@ -1,0 +1,54 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "06:00"
+      timezone: "Europe/Zurich"
+    open-pull-requests-limit: 10
+    versioning-strategy: "increase"
+    groups:
+      react:
+        applies-to: "version-updates"
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+        update-types:
+          - "minor"
+          - "patch"
+      radix-ui:
+        applies-to: "version-updates"
+        patterns:
+          - "@radix-ui/*"
+        update-types:
+          - "minor"
+          - "patch"
+      tailwind:
+        applies-to: "version-updates"
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "postcss"
+          - "autoprefixer"
+          - "tailwind-merge"
+          - "tailwindcss-animate"
+          - "tw-animate-css"
+        update-types:
+          - "minor"
+          - "patch"
+      other-dependencies:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      security:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore(deps)"
